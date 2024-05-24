@@ -1,0 +1,33 @@
+.app {
+  height: 100vh;
+  position: relative;
+}
+.app::before {
+  /* content: ""; */
+  background-image: url("./HealthMate/backgroundImage.jpg");
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.2;
+}
+@import "../node_modules/@syncfusion/ej2-base/styles/material.css";
+@import "../node_modules/@syncfusion/ej2-buttons/styles/material.css";
+@import "../node_modules/@syncfusion/ej2-inputs/styles/material.css";
+@import "../node_modules/@syncfusion/ej2-popups/styles/material.css";
+@import "../node_modules/@syncfusion/ej2-react-calendars/styles/material.css";
+
+/* .app {
+  background-image: url("./HealthMate/backgroundImage.jpg");
+
+  height: 100vh;
+  margin-top: -70px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.2;
+} */

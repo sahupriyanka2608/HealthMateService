@@ -1,0 +1,59 @@
+@startuml
+title Create Appointment
+
+actor Client
+participant BookAppointmentPage
+participant CreateAppointmentActivity
+participant DoctorDao
+participant UserDao
+participant AppointmentDao
+participant DoctorAvailabilityDao
+participant DoctorAppointmentServiceUtils
+participant ModelConverter
+database DynamoDB
+
+Client -> BookAppointmentPage : POST /createappointment/:doctorId/:date/:time
+activate Client
+activate CreateAppointmentActivity
+activate DoctorDao
+activate UserDao
+activate DoctorAvailabilityDao
+BookAppointmentPage -> CreateAppointmentActivity :  handleRequest(CreateAppointmentRequest, Context)
+alt if doctorId or date or time is not given
+    BookAppointmentPage <-- CreateAppointmentActivity : InvalidInputException
+    Client <-- BookAppointmentPage
+CreateAppointmentActivity -> DoctorDao : getDoctor(doctorId)
+DoctorDao -> DynamoDB : load doctor by ID
+alt if doctor ID does not exist
+    DoctorDao <-- DynamoDB : null
+    BookAppointmentPage <-- DoctorDao : throw DoctorNotFoundException
+    Client <-- BookAppointmentPage : 404 Response
+else otherwise, continue
+end
+CreateAppointmentActivity -> UserDao : getUser(userId)
+UserDao -> DynamoDB : load user by ID
+alt if user ID does not exist
+    UserDao <-- DynamoDB : null
+    BookAppointmentPage <-- UserDao : throw UserNotFoundException
+    Client <-- BookAppointmentPage : 404 Response
+else otherwise, continue
+end
+CreateAppointmentActivity -> DoctorAvailabilityDao : isAvailable(doctorId,date,time)
+alt if CreateAppointmentActivity <-- DoctorDao : false
+     BookAppointmentPage <-- CreateAppointmentActivity : throw NoSlotAvailableException
+     Client <-- BookAppointmentPage : 4xx Response
+else otherwise, continue
+end
+
+CreateAppointmentActivity -> DoctorAppointmentServiceUtils : generateAppointmentId()
+CreateAppointmentActivity <-- DoctorAppointmentServiceUtils : new appointment ID
+
+CreateAppointmentActivity -> CreateAppointmentActivity : populate Appointment object
+CreateAppointmentActivity -> AppointmentDao : saveAppointment(Appointment)
+AppointmentDao -> DynamoDB : save appointment
+AppointmentDao <-- DynamoDB
+CreateAppointmentActivity <-- AppointmentDao : Appointment
+
+
+
+@enduml

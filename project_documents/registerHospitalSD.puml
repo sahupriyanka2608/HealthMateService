@@ -1,0 +1,41 @@
+@startuml
+title Register Hospital
+
+actor Client
+participant "API Gateway" as APIGateway
+participant Lambda
+participant CreateHospitalActivity
+participant UserDao
+database DynamoDB
+
+Client -> APIGateway : POST / registerHospital
+activate Client
+APIGateway -> Lambda
+activate Lambda
+activate CreateHospitalActivity
+activate UserServiceUtils
+activate UserDao
+Lambda -> CreateHospitalActivity:  handleRequest(CreateHospitalRequest, Context)
+CreateHospitalActivity -> HospitalDao: getHospitalByRegistrationId(registrationId)
+HospitalDao -> DynamoDB : load Hospital by registrationId
+alt if Hospital exist
+    HospitalDao <-- DynamoDB : Hospital
+    CreateHospitalActivity <-- HospitalDao : Hospital
+    Lambda <-- CreateHospitalActivity : throw HospitalAlreadyPresentException
+    APIGateway <-- Lambda
+    Client <-- APIGateway : 404 Response
+else otherwise, continue
+end
+CreateHospitalActivity -> HospitalServiceUtils : generateHospitalId()
+CreateHospitalActivity <-- HospitalServiceUtils : new hospital ID
+
+CreateHospitalActivity -> CreateHospitalActivity : populate Hospital object
+CreateHospitalActivity -> HospitalDao : saveHospital(Hospital)
+HospitalDao -> DynamoDB : save Hospital
+HospitalDao <- DynamoDB : Hospital
+CreateHospitalActivity <- HospitalDao : Hospital
+
+
+
+
+@enduml

@@ -1,0 +1,35 @@
+@startuml
+title Get Appointments By UserId
+
+actor Client
+participant ShowAppointmentsPage
+participant GetAppointmentActivity
+participant UserDao
+participant AppointmentDao
+participant DoctorAppointmentServiceUtils
+participant ModelConverter
+database DynamoDB
+
+Client -> ShowAppointmentsPage : GET / appoinments/userid
+activate Client
+activate ShowAppointmentsPage
+activate GetAppointmentActivity
+activate AppointmentDao
+activate UserDao
+ShowAppointmentsPage -> GetAppointmentActivity :  handleRequest(GetAppointmentRequest, Context)
+GetAppointmentActivity -> UserDao : getUser(userId)
+UserDao -> DynamoDB : load user by ID
+alt if user ID does not exist
+    UserDao <-- DynamoDB : null
+    ShowAppointmentsPage <-- UserDao : throw UserNotFoundException
+    Client <-- ShowAppointmentsPage : 404 Response
+else otherwise, continue
+end
+GetAppointmentActivity -> AppointmentDao : getAppointments(userId)
+AppointmentDao -> DynamoDB : load appoinments by userId
+AppointmentDao <- DynamoDB : Appointment
+GetAppointmentActivity <- AppointmentDao : Appointment
+
+
+
+@enduml

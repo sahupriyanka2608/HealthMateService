@@ -1,0 +1,46 @@
+@startuml
+title Register User
+
+actor Client
+participant RegisterPage
+participant CreateUserActivity
+participant UserDao
+database DynamoDB
+
+Client -> RegisterPage : POST / createUser/:email/:pwd
+activate Client
+activate RegisterPage
+activate CreateUserActivity
+activate UserServiceUtils
+activate UserDao
+RegisterPage -> CreateUserActivity:  handleRequest(CreateUserRequest, Context)
+CreateUserActivity -> UserDao : getUserByEmail(email)
+UserDao -> DynamoDB : load user by emailid
+alt if user exist
+    UserDao <-- DynamoDB : User
+    CreateUserActivity <-- UserDao : User
+    RegisterPage <-- CreateUserActivity : throw EmailAlreadyRegisteredException
+    Client <-- RegisterPage : 404 Response
+else otherwise, continue
+end
+CreateUserActivity -> UserServiceUtils : validateEmail(email)
+CreateUserActivity -> UserServiceUtils : validatePassword(pwd)
+alt if email or pwd is Invalid
+    CreateUserActivity <-- UserServiceUtils : throw InvalidInputException
+    RegisterPage <-- CreateUserActivity
+    Client <-- RegisterPage : 404 Response
+else otherwise, continue
+end
+CreateUserActivity -> UserServiceUtils : generateUserId()
+CreateUserActivity <-- UserServiceUtils : new user ID
+
+CreateUserActivity -> CreateUserActivity : populate User object
+CreateUserActivity -> UserDao : saveUser(User)
+UserDao -> DynamoDB : save User
+UserDao <- DynamoDB
+CreateUserActivity <- UserDao : User
+
+
+
+
+@enduml

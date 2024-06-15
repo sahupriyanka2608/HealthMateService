@@ -1,0 +1,48 @@
+@startuml
+title Cancel Appointment
+
+actor Client
+participant CancelAppointmentPage
+participant CancelAppointmentActivity
+participant UserDao
+participant AppointmentDao
+database DynamoDB
+
+Client -> CancelAppointmentPage : DELETE / appointment/:doctorId/:date/:time
+activate Client
+activate CancelAppointmentPage
+activate CancelAppointmentActivity
+activate AppointmentDao
+activate UserDao
+CancelAppointmentPage -> CancelAppointmentActivity :  handleRequest(CancelAppointmentRequest, Context)
+CancelAppointmentActivity -> UserDao : getUser(userId)
+UserDao -> DynamoDB : load user by ID
+alt if user ID does not exist
+    UserDao <-- DynamoDB : null
+    CancelAppointmentPage <-- UserDao : throw UserNotFoundException
+    Client <-- CancelAppointmentPage : 404 Response
+else otherwise, continue
+end
+CancelAppointmentActivity -> AppointmentDao : getAppointment(userId,date,time)
+AppointmentDao -> DynamoDB : load appointment
+alt if appointment does not exist
+    AppointmentDao <-- DynamoDB : null
+    CancelAppointmentPage <-- AppointmentDao : throw AppointmentNotExistException
+    Client <-- CancelAppointmentPage : 404 Response
+else otherwise, continue
+
+end
+CancelAppointmentActivity <-- AppointmentDao : Appointment
+CancelAppointmentActivity <- CancelAppointmentActivity : validate userId matches with request
+alt if request userId and Appointment userId different
+    CancelAppointmentPage <-- CancelAppointmentActivity : throw InvalidAttributeException
+    Client <-- CancelAppointmentPage : 400 Response
+else otherwise,continue
+CancelAppointmentActivity -> AppointmentDao : deleteAppointment(appointmentId,userId)
+
+
+AppointmentDao -> DynamoDB
+AppointmentDao <- DynamoDB : 200 response
+CancelAppointmentActivity <- AppointmentDao
+CancelAppointmentPage <- CancelAppointmentActivity
+@enduml

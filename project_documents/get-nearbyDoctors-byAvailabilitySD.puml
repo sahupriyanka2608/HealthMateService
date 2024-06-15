@@ -1,0 +1,45 @@
+@startuml
+title Get Availble Doctors based on pincode
+
+actor Client
+participant FindNearByDoctorsPage
+participant GetDoctorActivity
+participant HospitalDao
+participant DoctorAvailabilityDao
+database DynamoDB
+
+Client -> FindNearByDoctorsPage : GET / doctors/:pincode/:date/:department
+activate Client
+activate FindNearByDoctorsPage
+activate GetDoctorActivity
+activate HospitalDao
+FindNearByDoctorsPage -> GetDoctorActivity :  handleRequest(GetDoctorRequest, Context)
+alt if pincode or date or department is not given:
+    FindNearByDoctorsPage <-- GetDoctorActivity : InvalidInputException
+    Client <-- FindNearByDoctorsPage
+else otherwise, continue
+GetDoctorActivity -> HospitalDao : getNearByDoctor(pincode,department)
+
+HospitalDao -> DynamoDB : load doctors based on pincode,department
+HospitalDao <- DynamoDB : List<Doctor>
+alt if List<Doctor> is Empty:
+    FindNearByDoctorsPage <-- HospitalDao : throw NoDoctorPresentException
+    Client <-- FindNearByDoctorsPage : 404 Response
+else otherwise, continue
+end
+GetDoctorActivity <- HospitalDao : List<Doctor>
+
+activate DoctorAvailabilityDao
+GetDoctorActivity -> DoctorAvailabilityDao : getAvailableDoctors(List<Doctor>,date)
+DoctorAvailabilityDao -> DynamoDB : load doctors who are available on the date
+DoctorAvailabilityDao <- DynamoDB : List<Doctor>
+alt if List<Doctor> is Empty:
+    FindNearByDoctorsPage <-- DoctorAvailabilityDao : throw NoDoctorAvailableOnThisDateException
+    Client <-- FindNearByDoctorsPage : 404 Response
+else otherwise, continue
+end
+GetDoctorActivity <- DoctorAvailabilityDao
+FindNearByDoctorsPage <- GetDoctorActivity
+
+
+@enduml
